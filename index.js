@@ -22,12 +22,12 @@ app.post('/send-otp', async (req, res) => {
 // Endpoint to verify OTP
 app.post('/verify-otp', async (req, res) => {
   try {
-    const { phoneNumber, riderotp } = req.body;
-    if (!phoneNumber || !riderotp) {
+    const { phoneNumber, otp } = req.body;
+    if (!phoneNumber || !otp) {
       return res.status(400).json({ error: 'phoneNumber and otp are required' });
     }
 
-    const result = await verifyOtp(phoneNumber, riderotp);
+    const result = await verifyOtp(phoneNumber, otp);
     if (!result.success) {
       return res.status(400).json(result);
     }
