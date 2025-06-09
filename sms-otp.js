@@ -19,7 +19,7 @@ export async function sendOtp(phoneNumber) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': process.SMS_API_KEY,
+      'x-api-key': process.env.SMS_API_KEY,
     },
     body: JSON.stringify({
       recipients: [phoneNumber], // Array of recipients as required by TextBee
