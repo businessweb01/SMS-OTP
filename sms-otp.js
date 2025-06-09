@@ -45,7 +45,7 @@ export async function sendOtp(phoneNumber) {
 }
 
 export async function verifyOtp(phoneNumber, submittedOtp) {
-  const otpDocRef = doc(db, 'otps', phoneNumber);
+  const otpDocRef = doc(db, 'riderotps', phoneNumber);
   const docSnap = await getDoc(otpDocRef);
 
   if (!docSnap.exists()) {
