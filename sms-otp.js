@@ -15,7 +15,7 @@ export async function sendOtp(phoneNumber) {
 
   const message = `Your Siklo OTP code is ${otpCode}. Please use it within 5 minutes to verify your number.`;
 
-  const response = await fetch('https://api.textbee.dev/api/v1/gateway/devices/6846727d5c3a8ee28885c130/send-sms', {
+  const response = await fetch('https://api.textbee.dev/api/v1/gateway/devices/684687fe5c3a8ee28885f0d5/send-sms', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
