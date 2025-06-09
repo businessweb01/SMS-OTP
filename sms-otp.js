@@ -4,20 +4,27 @@ import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 
 dotenv.config();
-const SEMAPHORE_OTP_URL = 'https://api.semaphore.co/api/v4/messages';
+// Helper to generate a 6-digit OTP
+function generateOtp() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
+// Main OTP function using TextBee
 export async function sendOtp(phoneNumber) {
-  const message = 'Your Siklo OTP code is {otp}. Please use it within 5 minutes to verify your number.';
+  const otpCode = generateOtp();
 
-  const params = new URLSearchParams();
-  params.append('apikey', process.env.SEMAPHORE_API_KEY);
-  params.append('sendername', 'SIKLO');
-  params.append('number', phoneNumber);
-  params.append('message', message); 
+  const message = `Your Siklo OTP code is ${otpCode}. Please use it within 5 minutes to verify your number.`;
 
-  const response = await fetch(SEMAPHORE_OTP_URL, {
+  const response = await fetch('https://api.textbee.dev/api/v1/gateway/devices/6846727d5c3a8ee28885c130/send-sms', {
     method: 'POST',
-    body: params,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': 'ffc77a11-7132-49f0-b554-f9781bd372ad',
+    },
+    body: JSON.stringify({
+      recipients: [phoneNumber], // Array of recipients as required by TextBee
+      message: message,
+    }),
   });
 
   if (!response.ok) {
@@ -25,23 +32,16 @@ export async function sendOtp(phoneNumber) {
     throw new Error(`Failed to send OTP: ${err}`);
   }
 
-  const data = await response.json();
-
-  if (!data || !data[0]?.code) {
-    throw new Error('No OTP code returned from Semaphore');
-  }
-
-  const otpCode = data[0].code;
-
+  // Save OTP and expiry to Firestore
   const otpDocRef = doc(db, 'riderotps', phoneNumber);
-  const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+  const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes from now
 
   await setDoc(otpDocRef, {
     code: otpCode,
     expiresAt: expiry,
   });
 
-  return { success: true, message: 'OTP sent successfully' };
+  return { success: true, message: 'OTP sent successfully', otp: otpCode }; // optional: return OTP for dev testing
 }
 
 export async function verifyOtp(phoneNumber, submittedOtp) {
