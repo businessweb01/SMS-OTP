@@ -33,7 +33,7 @@ export async function sendOtp(phoneNumber) {
 
   const otpCode = data[0].code;
 
-  const otpDocRef = doc(db, 'otps', phoneNumber);
+  const otpDocRef = doc(db, 'riderotps', phoneNumber);
   const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
 
   await setDoc(otpDocRef, {
