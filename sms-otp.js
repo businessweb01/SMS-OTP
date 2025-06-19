@@ -1,5 +1,5 @@
 import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
-import { db } from './firebaseConfig.js'; // ✅ Firestore instance
+import { db } from './firebaseConfig.js';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 
@@ -9,10 +9,10 @@ function generateOtp() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// 🚀 Send OTP (resends overwrite old OTP)
+// 🚀 Send OTP (only store if SMS sent successfully)
 export async function sendOtp(phoneNumber) {
   const otpCode = generateOtp();
-  const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes from now
+  const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
 
   const message = `Your Siklo OTP code is ${otpCode}. Please use it within 5 minutes to verify your number.`;
 
@@ -33,7 +33,7 @@ export async function sendOtp(phoneNumber) {
     throw new Error(`Failed to send OTP: ${err}`);
   }
 
-  // ✅ Overwrite existing OTP in Firestore
+  // ✅ Only save to Firestore if SMS sent successfully
   const otpDocRef = doc(db, 'riderotps', phoneNumber);
   await setDoc(otpDocRef, {
     code: otpCode,
@@ -42,6 +42,7 @@ export async function sendOtp(phoneNumber) {
 
   return { success: true, message: 'OTP sent successfully' };
 }
+
 
 // ✅ Verify OTP
 export async function verifyOtp(phoneNumber, submittedOtp) {
