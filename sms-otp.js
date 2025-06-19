@@ -1,17 +1,18 @@
 import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
-import { db } from './firebaseConfig.js';
+import { rtdb } from './firebaseConfig.js';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 
 dotenv.config();
-// Helper to generate a 6-digit OTP
+
 function generateOtp() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Main OTP function using TextBee
+// Send OTP (resend overwrites)
 export async function sendOtp(phoneNumber) {
   const otpCode = generateOtp();
+  const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
 
   const message = `Your Siklo OTP code is ${otpCode}. Please use it within 5 minutes to verify your number.`;
 
@@ -22,7 +23,7 @@ export async function sendOtp(phoneNumber) {
       'x-api-key': process.env.SMS_API_KEY,
     },
     body: JSON.stringify({
-      recipients: [phoneNumber], // Array of recipients as required by TextBee
+      recipients: [phoneNumber],
       message: message,
     }),
   });
@@ -32,37 +33,39 @@ export async function sendOtp(phoneNumber) {
     throw new Error(`Failed to send OTP: ${err}`);
   }
 
-  // Save OTP and expiry to Firestore
-  const otpDocRef = doc(db, 'riderotps', phoneNumber);
-  const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes from now
-
+  // ✅ Overwrite any existing OTP
+  const otpDocRef = doc(rtdb, 'riderotps', phoneNumber);
   await setDoc(otpDocRef, {
     code: otpCode,
     expiresAt: expiry,
   });
 
-  return { success: true, message: 'OTP sent successfully', otp: otpCode }; // optional: return OTP for dev testing
+  return { success: true, message: 'OTP sent successfully' };
 }
 
+// Verify OTP securely (only latest OTP is valid)
 export async function verifyOtp(phoneNumber, submittedOtp) {
-  const otpDocRef = doc(db, 'riderotps', phoneNumber);
+  const otpDocRef = doc(rtdb, 'riderotps', phoneNumber);
   const docSnap = await getDoc(otpDocRef);
 
   if (!docSnap.exists()) {
-    return { success: false, message: 'No OTP found or OTP expired' };
+    return { success: false, message: 'No OTP found or already used/expired' };
   }
 
   const { code, expiresAt } = docSnap.data();
 
+  // ⏳ Expired
   if (Date.now() > expiresAt) {
-    await deleteDoc(otpDocRef);
+    await deleteDoc(otpDocRef); // cleanup
     return { success: false, message: 'OTP expired' };
   }
 
+  // ❌ Wrong code
   if (submittedOtp !== code) {
     return { success: false, message: 'Invalid OTP' };
   }
 
+  // ✅ Success - delete after verification
   await deleteDoc(otpDocRef);
 
   return { success: true, message: 'OTP verified successfully' };
