@@ -1,5 +1,5 @@
 import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
-import { rtdb } from './firebaseConfig.js';
+import { db } from './firebaseConfig.js'; // ✅ Firestore instance
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 
@@ -9,10 +9,10 @@ function generateOtp() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Send OTP (resend overwrites)
+// 🚀 Send OTP (resends overwrite old OTP)
 export async function sendOtp(phoneNumber) {
   const otpCode = generateOtp();
-  const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+  const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes from now
 
   const message = `Your Siklo OTP code is ${otpCode}. Please use it within 5 minutes to verify your number.`;
 
@@ -33,8 +33,8 @@ export async function sendOtp(phoneNumber) {
     throw new Error(`Failed to send OTP: ${err}`);
   }
 
-  // ✅ Overwrite any existing OTP
-  const otpDocRef = doc(rtdb, 'riderotps', phoneNumber);
+  // ✅ Overwrite existing OTP in Firestore
+  const otpDocRef = doc(db, 'riderotps', phoneNumber);
   await setDoc(otpDocRef, {
     code: otpCode,
     expiresAt: expiry,
@@ -43,9 +43,9 @@ export async function sendOtp(phoneNumber) {
   return { success: true, message: 'OTP sent successfully' };
 }
 
-// Verify OTP securely (only latest OTP is valid)
+// ✅ Verify OTP
 export async function verifyOtp(phoneNumber, submittedOtp) {
-  const otpDocRef = doc(rtdb, 'riderotps', phoneNumber);
+  const otpDocRef = doc(db, 'riderotps', phoneNumber);
   const docSnap = await getDoc(otpDocRef);
 
   if (!docSnap.exists()) {
@@ -54,18 +54,16 @@ export async function verifyOtp(phoneNumber, submittedOtp) {
 
   const { code, expiresAt } = docSnap.data();
 
-  // ⏳ Expired
   if (Date.now() > expiresAt) {
-    await deleteDoc(otpDocRef); // cleanup
+    await deleteDoc(otpDocRef); // delete expired OTP
     return { success: false, message: 'OTP expired' };
   }
 
-  // ❌ Wrong code
   if (submittedOtp !== code) {
     return { success: false, message: 'Invalid OTP' };
   }
 
-  // ✅ Success - delete after verification
+  // ✅ Valid OTP - delete after use
   await deleteDoc(otpDocRef);
 
   return { success: true, message: 'OTP verified successfully' };
